@@ -2,6 +2,7 @@
 #include <wmmintrin.h>
 #include <immintrin.h>
 #include <emmintrin.h>
+#include <pmmintrin.h>
 
 #define ALIGN(n) __attribute__ ((aligned(n)))
 #define pipeline 1
@@ -39,6 +40,7 @@ int main(){
 
     ELIMAC(K_1, K_2, plaintext, 64, tag);
 
+    imprimiArreglo(16, tag);
     return 0;
 }
 
@@ -51,7 +53,20 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
     else
         m_blocks=(size/64) + 1;
 
-    __m512i * plain_text_512 = (__m512i*) M;
+    // __m512i * plain_text_512 = (__m512i*) M;
+    __m512i plain_text_512[m_blocks];
+    for (int i = 0; i < m_blocks; i++){
+        plain_text_512[i] = _mm512_setzero_si512();
+    }
+    for (int i = 0; i < m_blocks; i++){
+        plain_text_512[i] = _mm512_setzero_si512();
+    }
+    for (int i = 0; i < m_blocks; i++){
+        plain_text_512[i] = _mm512_setzero_si512();
+    }
+    // for (int i = 0; i < m_blocks; i++){
+    //     plain_text_512[i] = _mm512_loadu_si512(&((__m512i*)M)[i]);
+    // }
     __m512i nonce;
     __m512i S_temp;
     __m128i Tag;
@@ -61,17 +76,17 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
     __m128i keys_128_k_2[11];
     __m512i keys_0 = _mm512_setzero_si512();
     __m512i sum_nonce= _mm512_set_epi64(0,4, 0,4, 0,4, 0,4);
+    union {__m128i bl128[4]; __m512i bl512;} S;
 
+    S.bl512 = _mm512_setzero_si512();
 
     AES_128_Key_Expansion(K_1, keys_128);
     AES_128_Key_Expansion(K_2, keys_128_k_2);
 
     nonce = _mm512_set_epi64(0,0, 0,1, 0,2, 0,3);
-    union {__m128i bl128[4]; __m512i bl512;} S;
     
     for (size_t i = 0; i < m_blocks; i++){
 
-        nonce=_mm512_add_epi64(nonce, sum_nonce);
         nonce_temp[0]=nonce; 
         
         H(nonce_temp,  keys_512, 6, pipeline);
@@ -81,6 +96,7 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
         I(plain_text_512,  keys_0, 4,pipeline);
 
         S_temp=_mm512_xor_si512(plain_text_512[i],S_temp);
+        nonce=_mm512_add_epi64(nonce, sum_nonce);
 
     }
     
@@ -91,9 +107,7 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
     
     AES_encrypt(Tag, &Tag, keys_128_k_2, 10);
     
-    
 	_mm_store_si128 ((__m128i*)T,Tag);
-
 }
 
 
