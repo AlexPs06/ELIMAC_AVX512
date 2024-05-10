@@ -19,10 +19,13 @@
 
 using namespace std;
 
-void H(__m512i * nonce,  __m512i *key, unsigned rounds,unsigned nblks);
-void I(__m512i * nonce,  __m512i  key, unsigned rounds,unsigned nblks);
-void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, unsigned char *T);
+static void H(__m512i * nonce,  __m512i *key, unsigned rounds,unsigned nblks);
+static void I(__m512i * nonce,  __m512i  key, unsigned rounds,unsigned nblks);
+static void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, unsigned char *T);
+static void AES_128_Key_Expansion(const unsigned char *userkey, void *key);
 static inline void AES_encrypt(__m128i tmp, __m128i *out,__m128i *key, unsigned rounds);
+static void imprimiArreglo(int tam, unsigned char *in );
+
 int main(){
 
     ALIGN(64) unsigned char plaintext[64]=  {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
@@ -55,8 +58,13 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
     __m512i nonce_temp[1];
     __m512i keys_512[11];
     __m128i keys_128[11];
+    __m128i keys_128_k_2[11];
     __m512i keys_0 = _mm512_setzero_si512();
     __m512i sum_nonce= _mm512_set_epi64(0,4, 0,4, 0,4, 0,4);
+
+
+    AES_128_Key_Expansion(K_1, keys_128);
+    AES_128_Key_Expansion(K_2, keys_128_k_2);
 
     nonce = _mm512_set_epi64(0,0, 0,1, 0,2, 0,3);
     union {__m128i bl128[4]; __m512i bl512;} S;
@@ -80,7 +88,8 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
     for (size_t i = 0; i < 4; i++){
         Tag=_mm_xor_si128(Tag,S.bl128[i]);
     }
-    AES_encrypt(Tag, &Tag, keys_128, 10);
+    
+    AES_encrypt(Tag, &Tag, keys_128_k_2, 10);
     
     
 	_mm_store_si128 ((__m128i*)T,Tag);
@@ -152,5 +161,15 @@ static void AES_cast_128_to_512_key2(__m128 *key,__m512 *key_512){
         oa.oa128[3] = key[i];
         key_512[i]=oa.oa512;
     }
+
+}
+
+void imprimiArreglo(int tam, unsigned char *in )
+{
+
+    for (int i = 0; i<tam; i++){
+        printf("%02x", in[i] );
+    }
+    printf("\n" );
 
 }
