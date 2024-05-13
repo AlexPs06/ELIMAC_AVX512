@@ -24,6 +24,7 @@ static void H(__m512i * nonce,  __m512i *key, unsigned rounds,unsigned nblks);
 static void I(__m512i * nonce,  __m512i  key, unsigned rounds,unsigned nblks);
 static void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, unsigned char *T);
 static void AES_128_Key_Expansion(const unsigned char *userkey, void *key);
+static void AES_cast_128_to_512_key2(__m128i *key,__m512i *key_512);
 static inline void AES_encrypt(__m128i tmp, __m128i *out,__m128i *key, unsigned rounds);
 static void imprimiArreglo(int tam, unsigned char *in );
 
@@ -40,6 +41,7 @@ int main(){
 
     ELIMAC(K_1, K_2, plaintext, 64, tag);
 
+    printf("\n");
     imprimiArreglo(16, tag);
     return 0;
 }
@@ -53,17 +55,17 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
     else
         m_blocks=(size/64) + 1;
 
-    // __m512i * plain_text_512 = (__m512i*) M;
-    __m512i plain_text_512[m_blocks];
-    for (int i = 0; i < m_blocks; i++){
-        plain_text_512[i] = _mm512_setzero_si512();
-    }
-    for (int i = 0; i < m_blocks; i++){
-        plain_text_512[i] = _mm512_setzero_si512();
-    }
-    for (int i = 0; i < m_blocks; i++){
-        plain_text_512[i] = _mm512_setzero_si512();
-    }
+    __m512i * plain_text_512 = (__m512i*) M;
+    // __m512i plain_text_512[m_blocks];
+    // for (int i = 0; i < m_blocks; i++){
+    //     plain_text_512[i] = _mm512_setzero_si512();
+    // }
+    // for (int i = 0; i < m_blocks; i++){
+    //     plain_text_512[i] = _mm512_setzero_si512();
+    // }
+    // for (int i = 0; i < m_blocks; i++){
+    //     plain_text_512[i] = _mm512_setzero_si512();
+    // }
     // for (int i = 0; i < m_blocks; i++){
     //     plain_text_512[i] = _mm512_loadu_si512(&((__m512i*)M)[i]);
     // }
@@ -82,6 +84,7 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
 
     AES_128_Key_Expansion(K_1, keys_128);
     AES_128_Key_Expansion(K_2, keys_128_k_2);
+    AES_cast_128_to_512_key2(keys_128, keys_512);
 
     nonce = _mm512_set_epi64(0,0, 0,1, 0,2, 0,3);
     
@@ -166,8 +169,8 @@ static void AES_128_Key_Expansion(const unsigned char *userkey, void *key)
     EXPAND_ASSIST(x0,x1,x2,x0,255,54);  kp[10] = x0;
 }
 
-static void AES_cast_128_to_512_key2(__m128 *key,__m512 *key_512){
-    union {__m128 oa128[4]; __m512 oa512;} oa;
+static void AES_cast_128_to_512_key2(__m128i *key,__m512i *key_512){
+    union {__m128i oa128[4]; __m512i oa512;} oa;
     for(int i = 0; i< 11; i++ ){
         oa.oa128[0] = key[i];
         oa.oa128[1] = key[i];
