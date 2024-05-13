@@ -30,16 +30,23 @@ static void imprimiArreglo(int tam, unsigned char *in );
 
 int main(){
 
-    ALIGN(64) unsigned char plaintext[64]=  {0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
+    ALIGN(64) unsigned char plaintext[128]=  {
+                                             0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
+                                             0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
+                                             0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
+                                             0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 
+                                             
+                                             0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
                                              0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
                                              0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
                                              0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 
+
                                             };
     ALIGN(16) unsigned char tag[16 ]={ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0};
     ALIGN(16) unsigned char K_1[16 ]={ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0};
     ALIGN(16) unsigned char K_2[16 ]={ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0};
 
-    ELIMAC(K_1, K_2, plaintext, 64, tag);
+    ELIMAC(K_1, K_2, plaintext, 128, tag);
 
     printf("\n");
     imprimiArreglo(16, tag);
@@ -86,19 +93,18 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
     AES_128_Key_Expansion(K_2, keys_128_k_2);
     AES_cast_128_to_512_key2(keys_128, keys_512);
 
-    nonce = _mm512_set_epi64(0,0, 0,1, 0,2, 0,3);
+    nonce = _mm512_set_epi64(0,3, 0,2, 0,1, 0,0);
     
     for (size_t i = 0; i < m_blocks; i++){
 
         nonce_temp[0]=nonce; 
-        
         H(nonce_temp,  keys_512, 6, pipeline);
-        
+
         plain_text_512[i]=_mm512_xor_si512(plain_text_512[i],nonce_temp[0]);
 
-        I(plain_text_512,  keys_0, 4,pipeline);
+        I(&plain_text_512[i],  keys_0, 4,pipeline);
 
-        S_temp=_mm512_xor_si512(plain_text_512[i],S_temp);
+        S_temp=_mm512_xor_epi64(plain_text_512[i],S_temp);
         nonce=_mm512_add_epi64(nonce, sum_nonce);
 
     }
@@ -107,6 +113,7 @@ void ELIMAC(unsigned char *K_1, unsigned char *K_2, unsigned char *M, int size, 
     for (size_t i = 0; i < 4; i++){
         Tag=_mm_xor_si128(Tag,S.bl128[i]);
     }
+
     
     AES_encrypt(Tag, &Tag, keys_128_k_2, 10);
     
